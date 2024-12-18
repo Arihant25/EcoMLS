@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoMLS: Scheduler Performance Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            padding: 2rem 0;
+            margin-bottom: 3rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 1s ease-out;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #00f2fe, #4facfe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .scheduler-section {
+            margin-bottom: 4rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s ease-out;
+        }
+
+        .scheduler-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .scheduler-title {
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .graphs-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+        }
+
+        .graph-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+
+        .graph-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .graph-title {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            color: #4facfe;
+        }
+
+        .graph-image {
+            width: 100%;
+            height: 300px;
+            object-fit: contain;
+            border-radius: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .graph-card:hover .graph-image {
+            transform: scale(1.02);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .navigation {
+            position: fixed;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .nav-dot {
+            width: 12px;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot.active {
+            background: #4facfe;
+            transform: scale(1.3);
+        }
+
+        /* Desktop styles for navigation */
+        @media (min-width: 769px) {
+            .mobile-nav {
+                display: none;
+                /* Show on desktop */
+                position: static;
+                /* Remove sticky positioning */
+                background: rgba(255, 255, 255, 0.2);
+                max-width: 600px;
+                /* Limit width on desktop */
+                margin: 0 auto 2rem auto;
+                /* Center and add bottom margin */
+            }
+
+            .mobile-nav-button {
+                padding: 0.75rem 1.5rem;
+                /* Larger padding on desktop */
+                font-size: 1rem;
+                /* Larger font size */
+            }
+
+            .mobile-nav-button:hover {
+                background: rgba(79, 172, 254, 0.6);
+                /* Hover effect for desktop */
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            header {
+                padding: 1rem;
+                margin-bottom: 2rem;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .scheduler-title {
+                font-size: 1.4rem;
+                margin-bottom: 1rem;
+                padding: 0.8rem;
+            }
+
+            .graphs-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .graph-card {
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .graph-title {
+                font-size: 1rem;
+            }
+
+            .graph-image {
+                height: 200px;
+            }
+
+            /* Mobile-specific touch interactions */
+            .graph-card {
+                -webkit-tap-highlight-color: transparent;
+                touch-action: manipulation;
+            }
+
+            .mobile-nav {
+                display: flex;
+                /* Hidden by default for desktop */
+                justify-content: center;
+                gap: 0.5rem;
+                margin: 1rem 0;
+                padding: 0.5rem;
+                background: rgba(255, 255, 255, 0.3);
+                /* More opaque background */
+                border-radius: 20px;
+                position: sticky;
+                top: 0;
+                z-index: 100;
+                backdrop-filter: blur(10px);
+                /* Added blur effect */
+            }
+
+            .mobile-nav-button {
+                padding: 0.5rem 1rem;
+                background: rgba(26, 26, 46, 0.8);
+                /* More opaque background */
+                border: none;
+                border-radius: 15px;
+                color: white;
+                font-size: 0.9rem;
+                cursor: pointer;
+                transition: background 0.3s ease;
+                font-weight: 500;
+                /* Added font weight */
+            }
+
+            .mobile-nav-button.active {
+                background: #4facfe;
+            }
+
+            /* Mobile-optimized expanded view */
+            .graph-card.expanded {
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                width: 95vw;
+                height: auto;
+                z-index: 1000;
+                background: rgba(26, 26, 46, 0.95);
+            }
+
+            .graph-card.expanded .graph-image {
+                height: auto;
+                max-height: 80vh;
+            }
+
+            /* Add overlay for expanded view */
+            .overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.8);
+                z-index: 999;
+            }
+
+            .overlay.active {
+                display: block;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>EcoMLS: Scheduler Performance Analysis</h1>
+            <p>Comparing Default, Round Robin, and Random Schedulers</p>
+        </header>
+
+        <div class="mobile-nav">
+            <button class="mobile-nav-button active" data-section="default">Default</button>
+            <button class="mobile-nav-button" data-section="roundrobin">Round Robin</button>
+            <button class="mobile-nav-button" data-section="random">Random</button>
+        </div>
+
+
+        <div class="scheduler-section" id="default">
+            <h2 class="scheduler-title">Default Scheduler</h2>
+            <div class="graphs-grid">
+                <div class="graph-card">
+                    <h3 class="graph-title">Accuracy Over Time</h3>
+                    <img src="EcoData/default_accuracy_over_time.png" alt="Default Accuracy Over Time"
+                        class="graph-image">
+                </div>
+                <div class="graph-card">
+                    <h3 class="graph-title">Energy Consumption Over Time</h3>
+                    <img src="EcoData/default_energy_over_time.png" alt="Default Energy Over Time" class="graph-image">
+                </div>
+                <div class="graph-card">
+                    <h3 class="graph-title">Energy Consumption vs Accuracy</h3>
+                    <img src="EcoData/default_energy_vs_accuracy.png" alt="Default Energy vs Accuracy"
+                        class="graph-image">
+                </div>
+                <div class="graph-card">
+                    <h3 class="graph-title">Energy vs Average Confidence Score</h3>
+                    <img src="EcoData/default_energy_vs_avg_conf.png" alt="Default Energy vs Confidence"
+                        class="graph-image">
+                </div>
+            </div>
+        </div>
+
+        <div class="scheduler-section" id="roundrobin">
+            <h2 class="scheduler-title">Round Robin Scheduler</h2>
+            <div class="graphs-grid">
+                <div class="graph-card">
+                    <h3 class="graph-title">Accuracy Over Time</h3>
+                    <img src="EcoData/roundrobin_accuracy_over_time.png" alt="Round Robin Accuracy Over Time"
+                        class="graph-image">
+                </div>
+                <div class="graph-card">
+                    <h3 class="graph-title">Energy Consumption Over Time</h3>
+                    <img src="EcoData/roundrobin_energy_over_time.png" alt="Round Robin Energy Over Time"
+                        class="graph-image">
+                </div>
+                <div class="graph-card">
+                    <h3 class="graph-title">Energy Consumption vs Accuracy</h3>
+                    <img src="EcoData/roundrobin_energy_vs_accuracy.png" alt="Round Robin Energy vs Accuracy"
+                        class="graph-image">
+                </div>
+                <div class="graph-card">
+                    <h3 class="graph-title">Energy vs Average Confidence Score</h3>
+                    <img src="EcoData/roundrobin_energy_vs_avg_conf.png" alt="Round Robin Energy vs Confidence"
+                        class="graph-image">
+                </div>
+            </div>
+        </div>
+
+        <div class="scheduler-section" id="random">
+            <h2 class="scheduler-title">Random Scheduler</h2>
+            <div class="graphs-grid">
+                <div class="graph-card">
+                    <h3 class="graph-title">Accuracy Over Time</h3>
+                    <img src="EcoData/random_accuracy_over_time.png" alt="Random Accuracy Over Time"
+                        class="graph-image">
+                </div>
+                <div class="graph-card">
+                    <h3 class="graph-title">Energy Consumption Over Time</h3>
+                    <img src="EcoData/random_energy_over_time.png" alt="Random Energy Over Time" class="graph-image">
+                </div>
+                <div class="graph-card">
+                    <h3 class="graph-title">Energy Consumption vs Accuracy</h3>
+                    <img src="EcoData/random_energy_vs_accuracy.png" alt="Random Energy vs Accuracy"
+                        class="graph-image">
+                </div>
+                <div class="graph-card">
+                    <h3 class="graph-title">Energy vs Average Confidence Score</h3>
+                    <img src="EcoData/random_energy_vs_avg_conf.png" alt="Random Energy vs Confidence"
+                        class="graph-image">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="navigation">
+        <div class="nav-dot" data-section="default"></div>
+        <div class="nav-dot" data-section="roundrobin"></div>
+        <div class="nav-dot" data-section="random"></div>
+    </div>
+
+    <div class="overlay"></div>
+
+    <script>
+        // Intersection Observer for scroll animations
+        const sections = document.querySelectorAll('.scheduler-section');
+        const navDots = document.querySelectorAll('.nav-dot');
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    updateNavDots(entry.target.id);
+                }
+            });
+        }, {
+            threshold: 0.3
+        });
+
+        sections.forEach(section => {
+            observer.observe(section);
+        });
+
+        // Navigation dots functionality
+        function updateNavDots(currentSection) {
+            navDots.forEach(dot => {
+                dot.classList.remove('active');
+                if (dot.dataset.section === currentSection) {
+                    dot.classList.add('active');
+                }
+            });
+        }
+
+        navDots.forEach(dot => {
+            dot.addEventListener('click', () => {
+                const section = document.getElementById(dot.dataset.section);
+                section.scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+
+        // Graph card click to expand functionality
+        const graphCards = document.querySelectorAll('.graph-card');
+
+        graphCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const image = card.querySelector('.graph-image');
+                if (card.classList.contains('expanded')) {
+                    card.style.position = '';
+                    card.style.zIndex = '';
+                    card.style.transform = '';
+                    image.style.height = '300px';
+                    card.classList.remove('expanded');
+                } else {
+                    card.style.position = 'relative';
+                    card.style.zIndex = '1000';
+                    card.style.transform = 'scale(1.5)';
+                    image.style.height = '400px';
+                    card.classList.add('expanded');
+                }
+            });
+        });
+
+        // Close expanded card when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.graph-card')) {
+                graphCards.forEach(card => {
+                    card.style.position = '';
+                    card.style.zIndex = '';
+                    card.style.transform = '';
+                    card.querySelector('.graph-image').style.height = '300px';
+                    card.classList.remove('expanded');
+                });
+            }
+        });
+        // Mobile navigation
+        const mobileNavButtons = document.querySelectorAll('.mobile-nav-button');
+        const overlay = document.querySelector('.overlay');
+
+        mobileNavButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                mobileNavButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                const section = document.getElementById(button.dataset.section);
+                section.scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+
+        // Enhanced mobile touch handling
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, false);
+
+        document.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, false);
+
+        function handleSwipe() {
+            const SWIPE_THRESHOLD = 50;
+            const sections = ['default', 'roundrobin', 'random'];
+
+            if (Math.abs(touchEndX - touchStartX) > SWIPE_THRESHOLD) {
+                const activeButton = document.querySelector('.mobile-nav-button.active');
+                const currentIndex = sections.indexOf(activeButton.dataset.section);
+
+                if (touchEndX < touchStartX && currentIndex < sections.length - 1) {
+                    // Swipe left
+                    mobileNavButtons[currentIndex + 1].click();
+                } else if (touchEndX > touchStartX && currentIndex > 0) {
+                    // Swipe right
+                    mobileNavButtons[currentIndex - 1].click();
+                }
+            }
+        }
+
+        // Enhanced mobile graph expansion
+        if (window.matchMedia("(max-width: 768px)").matches) {
+            graphCards.forEach(card => {
+                card.addEventListener('click', (e) => {
+                    if (card.classList.contains('expanded')) {
+                        card.classList.remove('expanded');
+                        overlay.classList.remove('active');
+                    } else {
+                        card.classList.add('expanded');
+                        overlay.classList.add('active');
+                    }
+                });
+            });
+
+            overlay.addEventListener('click', () => {
+                document.querySelector('.graph-card.expanded')?.classList.remove('expanded');
+                overlay.classList.remove('active');
+            });
+        }
+    </script>
+</body>
+
+</html>
